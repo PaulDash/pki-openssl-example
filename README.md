@@ -13,10 +13,11 @@ sudo yum install openssl nginx
 Base path:  `pki-example/ca`
 
 ```bash
-mkdir -p pki-example/ca/{certs,crl,csr,newcerts,private}
-cp openssl.conf pki-example/ca/
-sed -i 's?CHANGE_THIS_PATH?'`pwd`'?' ./pki-example/ca/openssl.conf
-cd pki-example/ca/
+mkdir ~/ca
+mkdir -p ~/ca/{certs,crl,csr,newcerts,private}
+cp openssl.cnf ~/ca/
+cd ca/
+sed -i 's?CHANGE_THIS_PATH?'`pwd`'?' ./ca/openssl.cnf
 chmod 700 private
 touch index.txt
 echo 00 > serial
@@ -31,12 +32,12 @@ Certificate Authority folder structure and short description:
 |- crl          # folder for crl list
 |- csr          # folder for certificate request
 |- index.txt    # simple certificates database
-|- openssl.conf # config file for OpenSSL
+|- openssl.cnf  # config file for OpenSSL
 |- private      # here rsa keys generated via openssl are stored
 |- serial       # store serial number
 ```
 ## Prepare OpenSSL configuration
-The [openssl.conf](openssl.conf) includes all important OpenSSL settings to run root CA and also intermediate CA. The `OCSP` configuration is not included but could be found in [OpenSSL doc](https://www.openssl.org/docs/).
+The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run root CA and also intermediate CA. The `OCSP` configuration is not included but could be found in [OpenSSL doc](https://www.openssl.org/docs/).
  This configuration include three certificate profiles:
  - ca profile - section `[v3_ca]`
  - server profile - section `[srv_crt]`
@@ -51,7 +52,7 @@ The [openssl.conf](openssl.conf) includes all important OpenSSL settings to run 
     ```
 2.  Generate certificate (profile v3_ca, valid: 10 years) - *key pass phrase is required*:
     ```bash
-    openssl req -config openssl.conf -key private/ca-key.pem -new -x509 -days 3650 -sha256 -extensions v3_ca -out certs/ca.pem
+    openssl req -config openssl.cnf -key private/ca-key.pem -new -x509 -days 3650 -sha256 -extensions v3_ca -out certs/ca.pem
     chmod 444 certs/ca.pem
     ```
 3.  By default each certificate is save as base64 encrypted text (PEM format). To verify it use below command:
@@ -84,59 +85,59 @@ The [openssl.conf](openssl.conf) includes all important OpenSSL settings to run 
     ```bash
     openssl x509 -outform der -in certs/ca.pem -out certs/ca.der
     ```
-## Generate server certificate and add it to eample web server
+## Generate server certificate and add it to example web server
 
-Commands from this section generate server key, csr and certificate on CA side. Steps 1-3 could be also run on external server. After that the new CSR has to be transferred to CA server.
+Commands from this section generate a server key, csr, and certificate on CA side. Steps 1-3 could be also run on external server. After which the new csr would have to be transferred to CA server.
 
-**Used domain name:** `pki-example.local`
+**Used domain name:** `lab.graydaycafe.com`
 
 ### Generate server certificate
 
-By default [openssl.conf](openssl.conf#L51) provide 2048 bit key. If you would like to generate 4096 key just add `4096` in the end of next command.
+By default [openssl.cnf](openssl.cnf#L51) provide 2048 bit key. If you would like to generate 4096 key just add `4096` in the end of next command.
 
 1.  Generate server rsa key:
     ```bash
-    openssl genrsa -out private/pki-example.local-key.pem
+    openssl genrsa -out private/www2-key.pem
     ```
 
 2.  Use private rsa key to generate certificate request. It will be placed in [pki-example/ca/csr](pki-example/ca/csr):
 
     ```bash
-    openssl req -config openssl.conf -key private/pki-example.local-key.pem  -new -sha256 -out csr/pki-example.local-csr.pem -subj "/C=PL/ST=LesserPoland/O=Example PKI/CN=pki-example.local"
+    openssl req -config openssl.cnf -key private/www2-key.pem  -new -sha256 -out csr/www2-csr.pem -subj "/O=Gray Day Cafe/CN=www2.lab.graydaycafe.com"
     ```
 
 3.  Below command displays CSR content:
 
     ```bash
-    openssl req -in csr/pki-example.local-csr.pem -noout -text
+    openssl req -in csr/www2-csr.pem -noout -text
     ```
 4.  A CSR allows to generate a server certificate (you have to provide CA pass phase to encrypt ca key):
 
     ```bash
-    openssl ca -config openssl.conf -extensions srv_cert -notext -md sha256 -in csr/pki-example.local-csr.pem -out certs/pki-example.local-cert.pem &&
-    sudo cp private/pki-example.local-key.pem /etc/pki/nginx/private &&
-    sudo cat certs/pki-example.local-cert.pem certs/ca.pem | sudo tee -a /etc/pki/nginx/pki-example.local-bundle.pem &&
+    openssl ca -config openssl.cnf -extensions srv_cert -notext -md sha256 -in csr/www2-csr.pem -out certs/www2-cert.pem &&
+    sudo cp private/www2-key.pem /etc/pki/nginx/private &&
+    sudo cat certs/www2-cert.pem certs/ca.pem | sudo tee -a /etc/pki/nginx/www2-bundle.pem &&
     sudo chown -R nginx:nginx /etc/pki/nginx &&
     sudo chmod 640 -R /etc/pki/nginx/private-example.local-cert.pem
     ```
 5.  What was changed?:
     * index.txt has a new entry:
       ```bash
-      V	200202145727Z		00	unknown	/C=PL/ST=LesserPoland/O=Example PKI/CN=pki-example.local
+      V	200202145727Z		00	unknown	/O=Gray Day Cafe/CN=www2.lab.graydaycafe.com
       ```
     * A serial was bumped to `01`
-    * server cert was signed: [certs/pki-example.local-cert.pem](certs/pki-example.local-cert.pem) below command would display cert content:
+    * server cert was signed: [certs/www2-cert.pem](certs/www2-cert.pem) below command would display cert content:
     ```bash
-    openssl x509 -in certs/pki-example.local-cert.pem -noout -text
+    openssl x509 -in certs/www2-cert.pem -noout -text
     ```
 6.  New cert could be verified via command:
     ```bash
-    openssl verify -CAfile certs/ca.pem certs/pki-example.local-cert.pem
+    openssl verify -CAfile certs/ca.pem certs/www2-cert.pem
     ```
-7.  Now server cert [certs/pki-example.local-cert.pem](certs/pki-example.local-cert.pem), server key [private/pki-example.local-key.pem](private/pki-example.local-key.pem) and ca certificate [certs/ca.pem](certs/ca.pem) could be transfer to appropriate server.
+7.  Now server cert [certs/www2-cert.pem](certs/www2-cert.pem), server key [private/www2-key.pem](private/www2-key.pem) and ca certificate [certs/ca.pem](certs/ca.pem) could be transfer to appropriate server.
 8.  Generated cert could be converted to pkcs12 via command:
     ```bash
-    openssl pkcs12 -export -out certs/pki-example.local-cert.pfx -inkey private/pki-example.local-key.pem -in certs/pki-example.local-cert.pem -certfile certs/ca.pem
+    openssl pkcs12 -export -out certs/www2-cert.pfx -inkey private/www2-key.pem -in certs/www2-cert.pem -certfile certs/ca.pem
     ```
     Above command is required a pass phase for pkcs12.  
 
@@ -153,7 +154,7 @@ By default [openssl.conf](openssl.conf#L51) provide 2048 bit key. If you would l
     ```
 3.  Copy server key and create cert bundle:
     ```bash
-    sudo cp private/pki-example.local-key.pem /etc/pki/nginx/private && sudo cat certs/pki-example.local-cert.pem certs/ca.pem | sudo tee -a /etc/pki/nginx/pki-example.local-bundle.pem &&
+    sudo cp private/www2-key.pem /etc/pki/nginx/private && sudo cat certs/www2-cert.pem certs/ca.pem | sudo tee -a /etc/pki/nginx/www2-bundle.pem &&
     sudo chown -R nginx:nginx /etc/pki/nginx &&
     sudo chmod 640 -R /etc/pki/nginx/private
     ```
@@ -165,8 +166,8 @@ By default [openssl.conf](openssl.conf#L51) provide 2048 bit key. If you would l
         server_name  _;
         root         /usr/share/nginx/html;
 
-        ssl_certificate "/etc/pki/nginx/pki-example.local-bundle.pem";
-        ssl_certificate_key "/etc/pki/nginx/private/pki-example.local-key.pem";
+        ssl_certificate "/etc/pki/nginx/www2-bundle.pem";
+        ssl_certificate_key "/etc/pki/nginx/private/www2-key.pem";
         ssl_session_cache shared:SSL:1m;
         ssl_session_timeout  10m;
         ssl_ciphers PROFILE=SYSTEM;
@@ -184,22 +185,22 @@ By default [openssl.conf](openssl.conf#L51) provide 2048 bit key. If you would l
         }
     }
     ```
-5.  To test nginx locally add `pki-example.local` to `/etc/hosts`:
+5.  To test nginx locally add `www2.lab.graydaycafe.com` to `/etc/hosts`:
     ```bash
-    127.0.0.1 pki-example.local
+    127.0.0.1 www2.lab.graydaycafe.com
     ```
-# Configure Certificate revocation list (CRL)
+# Configure Certificate Revocation List (CRL)
 
-A CRL provides a list of certificates that have been revoked. Some serpki-example.localvices like OpenVPN server can use it to deny access.    
+A CRL provides a list of certificates that have been revoked. Some services like OpenVPN server can use it to deny access.    
 
 When a certificate authority signs a certificate, it could add the CRL location into the certificate.
-In the certificate profile operator has to add section `crlDistributionPoints = URI:http://pki-example.local/crl.pem`.
+In the certificate profile operator has to add section `crlDistributionPoints = URI:http://www2.lab.graydaycafe.com/crl.pem`.
 
 > After the certificate was signed provided url can not be changed.
 
 1.  Add `crlDistributionPoints` to openssl profile i.e. `usr_cert`:
     ```bash
-    [ usr_cert ]pki-example.local-
+    [ usr_cert ]www2.lab.graydaycafe.com-
     # Extensions for client certificates
     basicConstraints = CA:FALSE
     nsCertType = client, email
@@ -207,7 +208,7 @@ In the certificate profile operator has to add section `crlDistributionPoints = 
     authorityKeyIdentifier = keyid,issuer
     keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
     extendedKeyUsage = echo 00 > crlnumberclientAuth, emailProtection
-    crlDistributionPoints = URI:http://pki-example.local/crl.pem
+    crlDistributionPoints = URI:http://www2.lab.graydaycafe.com/crl.pem
     ```
 2.  Generate CRL list, the CRL list has to be regenerated each time certificate would be revoke:
     ```bash
@@ -217,22 +218,22 @@ In the certificate profile operator has to add section `crlDistributionPoints = 
 3.  Generate client certificate for test CRL:
     ```bash
     openssl genrsa -out private/test-crl-key.pem &&
-    openssl req -config openssl.conf -key private/test-crl-key.pem  -new -sha256 -out csr/test-crl-csr.pem -subj "/C=PL/ST=LesserPoland/O=Example PKI/CN=test-crl" &&
-    openssl ca -config openssl.conf -extensions usr_cert -notext -md sha256 -in csr/test-crl-csr.pem -out certs/test-crl-cert.pem
+    openssl req -config openssl.cnf -key private/test-crl-key.pem  -new -sha256 -out csr/test-crl-csr.pem -subj "/O=Gray Day Cafe/CN=test-crl" &&
+    openssl ca -config openssl.cnf -extensions usr_cert -notext -md sha256 -in csr/test-crl-csr.pem -out certs/test-crl-cert.pem
     ```
 4.  Revoke generated certificate:
     ```bash
-    openssl ca -config openssl.conf -revoke certs/test-crl-cert.pem
+    openssl ca -config openssl.cnf -revoke certs/test-crl-cert.pem
     ```
     Result, second certificate in `index.txt` was revoked (R):
     ```bash
-    V	200202165027Z		03	unknown	/C=PL/ST=LesserPoland/O=Example PKI/CN=pki-example.local
-    R	200206214941Z	190206215134Z	04	unknown	/C=PL/ST=LesserPoland/O=Example PKI/CN=test-crl
+    V	200202165027Z		03	unknown	/C=PL/ST=LesserPoland/O=Gray Day Cafe/CN=www2.lab.graydaycafe.com
+    R	200206214941Z	190206215134Z	04	unknown	/O=Gray Day Cafe/CN=test-crl
 
     ```
 5.  Refresh CRL list:
     ```bash
-    openssl ca -config openssl.conf -gencrl -out crl/ca-crl.pem
+    openssl ca -config openssl.cnf -gencrl -out crl/ca-crl.pem
     ```
 6.  Check CRL content:
     ```bash
