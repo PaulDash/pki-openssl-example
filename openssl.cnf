@@ -1,0 +1,125 @@
+# openssl.cfg
+# THE GRAY DAY CAFE
+# MASTERING PKI LAB
+
+
+[ ca ]
+# The "ca" section defines the way the CA acts
+# when using the ca command to sign certificates
+
+default_ca = CA_default
+
+
+[ CA_default ]
+
+# path structure for CA_default profile
+dir               = /home/<username>/ca             # CA's main directory !!!!! CHANGE THIS !!!!!
+certs             = $dir/certs                # Where the issued certificates are kept
+crl_dir           = $dir/crl                  # Where the issued CRL are kept
+new_certs_dir     = $dir/newcerts             # All new generated certs will be placed here
+database          = $dir/index.txt            # database index file
+serial            = $dir/serial               # The current serial number
+RANDFILE          = $dir/private/.rand        # This is a file to read/write random data
+
+# CA's key and root certificate
+private_key       = $dir/private/ca-linux-key.pem
+certificate       = $dir/certs/ca-linux.pem
+
+# Certificate Revocation Lists
+crlnumber         = $dir/crlnumber            # Serial number for CRL
+crl               = $dir/crl/ca-linux-crl.pem # Current CRL
+crl_extensions    = crl_ext                   # CRL extension profile
+default_crl_days  = 30                        # CRL life period
+
+unique_subject    = no                        # Allow multiple certificates for same subject
+default_md        = sha256                    # default digest algorithm
+default_days      = 365                       # default lifetime for certificates
+preserve          = no                        # OpenSSL will re-order attributes in DNs to make them consistent
+policy            = policy_strict             # DN policy
+
+name_opt          = ca_default                # Define the way that the name is displayed
+cert_opt          = ca_default                # Define the way that the certificate info is displayed
+
+
+
+[ policy_strict ]
+# Below is a Distinguished Name (DN) policy
+# Fields listed as "match" must contain the exact same contents as in the CA's DN
+# Fields listed as "supplied" must be present
+# Fields listed as "optional" are allowed, but not required
+
+countryName             = match
+stateOrProvinceName     = match
+organizationName        = supplied
+organizationalUnitName  = optional
+commonName              = supplied
+emailAddress            = optional
+
+
+
+[ req ]
+# Options for the req tool
+default_bits        = 2048                      # default key size
+distinguished_name  = req_distinguished_name    # Point to DN requirements and defaults
+string_mask         = utf8only                  # Accepted type of string
+default_md          = sha256                    # Digest algorithm
+x509_extensions     = v3_ca                     # Extension to add
+
+
+
+[ req_distinguished_name ]
+countryName                     = Country Name (2 letter code)
+
+stateOrProvinceName             = State or Province Name
+
+0.organizationName              = Organization Name
+0.organizationName_default      = Gray Day Cafe
+
+organizationalUnitName          = Organizational Unit Name
+organizationalUnitName_default  = IT
+
+commonName                      = Common Name (of person or computer)
+commonName_max                  = 64
+
+emailAddress                    = E-mail Address
+
+
+[ req_attributes ]
+
+
+# Multiple policy are allowed and choose via `-policy` argument.
+
+
+[ v3_ca ]
+# Extensions for a typical CA
+subjectKeyIdentifier = hash                    # SKI is equal hash from the public key
+authorityKeyIdentifier = keyid:always,issuer   # AKI equals the SKI of the CA and the issuer of the CA.
+basicConstraints = critical, CA:true           # For subCA also use `pathlen:0`
+# The supported names are: digitalSignature, nonRepudiation, keyEncipherment,
+# dataEncipherment, keyAgreement, keyCertSign, cRLSign, encipherOnly and decipherOnly.
+keyUsage = critical, digitalSignature, cRLSign, keyCertSign
+
+
+[ usr_cert ]
+# Extensions for client certificates
+basicConstraints = CA:FALSE
+nsCertType = client, email
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer
+keyUsage = critical, nonRepudiation, digitalSignature, keyEncipherment
+extendedKeyUsage = clientAuth, emailProtection
+
+
+[ srv_cert ]
+# Extensions for server certificates
+basicConstraints = CA:FALSE
+nsCertType = server
+subjectKeyIdentifier = hash
+authorityKeyIdentifier = keyid,issuer:always
+keyUsage = critical, digitalSignature, keyEncipherment
+extendedKeyUsage = serverAuth
+
+
+[ crl_ext ]
+# Extension for CRLs
+authorityKeyIdentifier=keyid:always
