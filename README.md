@@ -1,5 +1,5 @@
 # pki-openssl-example
-PKI base on OpenSSL
+Lab setup and lab steps to configura PKI based on OpenSSL. This includes generating a CA certificate, issuing a certificate for a web server, adding that certificate to nginx (web server of choice here), publishing a CRL, and testing.
 ## Required packages
 Fedora/Centos:
 *  openssl
