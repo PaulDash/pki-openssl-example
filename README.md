@@ -17,7 +17,7 @@ mkdir ~/ca
 mkdir -p ~/ca/{certs,crl,csr,newcerts,private}
 cp openssl.cnf ~/ca/
 cd ca/
-sed -i 's?CHANGE_THIS_PATH?'`pwd`'?' ./ca/openssl.cnf
+sed -i 's?CHANGE_THIS_PATH?'`pwd`'?' openssl.cnf
 chmod 700 private
 touch index.txt
 echo 00 > serial
