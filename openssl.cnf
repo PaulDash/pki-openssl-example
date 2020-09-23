@@ -13,7 +13,7 @@ default_ca = CA_default
 [ CA_default ]
 
 # path structure for CA_default profile
-dir               = /home/<username>/ca             # CA's main directory !!!!! CHANGE THIS !!!!!
+dir               = /home/CHANGE_THIS_PATH/ca             # CA's main directory !!!!! CHANGE THIS !!!!!
 certs             = $dir/certs                # Where the issued certificates are kept
 crl_dir           = $dir/crl                  # Where the issued CRL are kept
 new_certs_dir     = $dir/newcerts             # All new generated certs will be placed here
