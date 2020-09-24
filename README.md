@@ -17,7 +17,7 @@ mkdir ~/ca
 mkdir -p ~/ca/{certs,crl,csr,newcerts,private}
 cp openssl.cnf ~/ca/
 cd ca/
-sed -i 's?CHANGE_THIS_PATH?'`pwd`'?' openssl.cnf
+sed -i 's?<username>?'`echo $USER`'?' openssl.cnf
 chmod 700 private
 touch index.txt
 echo 00 > serial
@@ -29,15 +29,15 @@ Certificate Authority folder structure and short description:
 ```bash
 |
 |- certs        #
-|- crl          # folder for crl list
-|- csr          # folder for certificate request
-|- index.txt    # simple certificates database
+|- crl          # folder for CRLs
+|- csr          # folder for certificate requests
+|- index.txt    # simple certificate database
 |- openssl.cnf  # config file for OpenSSL
-|- private      # here rsa keys generated via openssl are stored
-|- serial       # store serial number
+|- private      # here RSA keys generated via openssl are stored
+|- serial       # serial number counter
 ```
 ## Prepare OpenSSL configuration
-The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run root CA and also intermediate CA. The `OCSP` configuration is not included but could be found in [OpenSSL doc](https://www.openssl.org/docs/).
+The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run a root CA and intermediate CA. The `OCSP` configuration is not included but can be found in [OpenSSL doc](https://www.openssl.org/docs/).
  This configuration include three certificate profiles:
  - ca profile - section `[v3_ca]`
  - server profile - section `[srv_crt]`
@@ -45,7 +45,7 @@ The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run ro
 
 ## Generate root self-signed certificate
 
-1.  Generate RSA key ( You need to provide pass phrase, because `-aes256 ` is used ):
+1.  Generate RSA key ( You need to provide a pass phrase, because `-aes256 ` is used ):
     ```bash
     openssl genrsa -aes256 -out private/ca-key.pem 4096
     chmod 400 private/ca-key.pem
@@ -55,7 +55,7 @@ The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run ro
     openssl req -config openssl.cnf -key private/ca-key.pem -new -x509 -days 3650 -sha256 -extensions v3_ca -out certs/ca.pem
     chmod 444 certs/ca.pem
     ```
-3.  By default each certificate is save as base64 encrypted text (PEM format). To verify it use below command:
+3.  By default each certificate is save as base64 encoded text (PEM format). To verify it, use below command:
     ```bash
      openssl x509 -noout -text -in certs/ca.pem
     ```
@@ -67,11 +67,11 @@ The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run ro
         Serial Number:
             0d:15:33:42:d8:0c:22:ab:ef:06:00:1b:ab:a0:a1:0f:7c:ea:71:26
         Signature Algorithm: sha256WithRSAEncryption
-        Issuer: C = PL, ST = LesserPoland, O = Example PKI, CN = Root-CA
+        Issuer: C = PL, ST = LesserPoland, O = Gray Day Cafe, CN = CA-Linux
         Validity
             Not Before: Feb  2 06:16:58 2019 GMT
             Not After : Dec 11 06:16:58 2028 GMT
-        Subject: C = PL, ST = LesserPoland, O = Example PKI, CN = Root-CA
+        Subject: C = PL, ST = LesserPoland, O = Gray Day Cafe, CN = CA-Linux
         Subject Public Key Info:
             Public Key Algorithm: rsaEncryption
                 RSA Public-Key: (4096 bit)
@@ -80,20 +80,20 @@ The [openssl.cnf](openssl.cnf) includes all important OpenSSL settings to run ro
                CA:TRUE
         ...
     ```
-    A new certificate has `CA extension` enabled.
-4.  Convert CA cert to DER format:
+    The certificate has the `CA extension` enabled.
+4.  Convert the CA cert to DER format:
     ```bash
     openssl x509 -outform der -in certs/ca.pem -out certs/ca.der
     ```
-## Generate server certificate and add it to example web server
+## Generate server certificate and add it to a web server
 
-Commands from this section generate a server key, csr, and certificate on CA side. Steps 1-3 could be also run on external server. After which the new csr would have to be transferred to CA server.
+Commands from this section generate a server key, csr, and certificate directly on the CA. Steps 1-3 could be also run on an external server. After which the new csr would have to be transferred to the CA server.
 
-**Used domain name:** `lab.graydaycafe.com`
+**domain name:** `lab.graydaycafe.com`
 
 ### Generate server certificate
 
-By default [openssl.cnf](openssl.cnf#L51) provide 2048 bit key. If you would like to generate 4096 key just add `4096` in the end of next command.
+By default [openssl.cnf](openssl.cnf#L51) dictates 2048-bit keys. If you would like to generate a 4096-bit key just add `4096` in the end of next command.
 
 1.  Generate server rsa key:
     ```bash
@@ -135,15 +135,15 @@ By default [openssl.cnf](openssl.cnf#L51) provide 2048 bit key. If you would lik
     openssl verify -CAfile certs/ca.pem certs/www2-cert.pem
     ```
 7.  Now server cert [certs/www2-cert.pem](certs/www2-cert.pem), server key [private/www2-key.pem](private/www2-key.pem) and ca certificate [certs/ca.pem](certs/ca.pem) could be transfer to appropriate server.
-8.  Generated cert could be converted to pkcs12 via command:
+8.  Generated cert can be converted to pkcs12 via the command:
     ```bash
     openssl pkcs12 -export -out certs/www2-cert.pfx -inkey private/www2-key.pem -in certs/www2-cert.pem -certfile certs/ca.pem
     ```
-    Above command is required a pass phase for pkcs12.  
+    Above command requires a pass phase for pkcs12.  
 
-### Use new certificate on NGINX server
+### Use the certificate on NGINX server
 
-1.  Install nginx on new server (CentOS/ Fedora):
+1.  Install nginx on the server (CentOS/ Fedora):
     ```bash
     sudo yum install nginx
     ```
